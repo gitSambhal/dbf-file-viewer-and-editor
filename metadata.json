@@ -1,0 +1,5 @@
+{
+  "name": "DBF Nexus: Advanced DBF Editor",
+  "description": "A powerful, browser-based DBF file viewer and editor capable of handling large datasets with virtualized scrolling, full-text search, and Gemini-powered data analysis.",
+  "requestFramePermissions": []
+}
