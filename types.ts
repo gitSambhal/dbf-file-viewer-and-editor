@@ -25,6 +25,13 @@ export interface DBFData {
   hiddenColumns: string[];
 }
 
+export interface QueryCondition {
+  id: string;
+  field: string;
+  operator: 'equals' | 'contains' | 'gt' | 'lt' | 'starts';
+  value: string;
+}
+
 export interface RangeFilter {
   mode: 'all' | 'first' | 'last' | 'range';
   count: number;
