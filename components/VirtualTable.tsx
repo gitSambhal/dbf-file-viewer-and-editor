@@ -38,14 +38,31 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
   const [editingCell, setEditingCell] = useState<{ row: number; field: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false, rowIndex: null });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [tableHeight, setTableHeight] = useState(600);
 
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(prev => ({ ...prev, visible: false }));
     window.addEventListener('click', handleClickOutside);
     window.addEventListener('scroll', handleClickOutside, true);
+    
+    // Auto-resize table height based on parent container
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        // Leave room for header and footer in the table component
+        const headerHeight = 42; // column headers
+        const footerHeight = 42; // summary bar
+        setTableHeight(entry.contentRect.height - headerHeight - footerHeight);
+      }
+    });
+
+    if (containerRef.current?.parentElement) {
+      resizeObserver.observe(containerRef.current.parentElement);
+    }
+
     return () => {
       window.removeEventListener('click', handleClickOutside);
       window.removeEventListener('scroll', handleClickOutside, true);
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -91,7 +108,14 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
         const valB = b[sortConfig.key];
         if (valA === valB) return 0;
         const multiplier = sortConfig.direction === 'asc' ? 1 : -1;
-        return valA < valB ? -1 * multiplier : 1 * multiplier;
+        
+        // Handle numeric sort vs string sort
+        const numA = Number(valA);
+        const numB = Number(valB);
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return (numA - numB) * multiplier;
+        }
+        return (valA < valB ? -1 : 1) * multiplier;
       });
     }
 
@@ -99,7 +123,6 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
   }, [data.rows, searchTerm, sortConfig]);
 
   const rowHeight = 48;
-  const tableHeight = 600;
   const visibleRowsCount = Math.ceil(tableHeight / rowHeight);
   const totalHeight = filteredRows.length * rowHeight;
   

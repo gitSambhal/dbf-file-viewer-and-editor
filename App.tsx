@@ -18,6 +18,11 @@ const App: React.FC = () => {
   const [showQueryBuilder, setShowQueryBuilder] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  
+  // Layout Management
+  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Query Engine State
   const [queryConditions, setQueryConditions] = useState<QueryCondition[]>([]);
@@ -63,66 +68,56 @@ const App: React.FC = () => {
   const activeTab = tabs[activeTabIndex] || null;
   const currentSelectedRowIndex = activeTab ? selectedRowIndices[activeTab.id] ?? null : null;
 
-  const visibleData = useMemo(() => {
-    if (!activeTab) return null;
-    
-    // 1. Apply Query Filtering
-    let processedRows = activeTab.rows;
-    if (queryConditions.length > 0) {
-      processedRows = processedRows.filter(row => {
-        return queryConditions.every(cond => {
-          const rowValue = (row[cond.field] ?? '').toString().toLowerCase();
-          const targetValue = cond.value.toLowerCase();
-          
-          switch (cond.operator) {
-            case 'equals': return rowValue === targetValue;
-            case 'contains': return rowValue.includes(targetValue);
-            case 'starts': return rowValue.startsWith(targetValue);
-            case 'gt': return parseFloat(rowValue) > parseFloat(targetValue);
-            case 'lt': return parseFloat(rowValue) < parseFloat(targetValue);
-            default: return true;
-          }
-        });
-      });
-    }
-
-    // 2. Apply Slicer
-    let rows = processedRows;
-    if (rangeFilter.mode === 'first') {
-      rows = rows.slice(0, rangeFilter.count);
-    } else if (rangeFilter.mode === 'last') {
-      rows = rows.slice(-rangeFilter.count);
-    } else if (rangeFilter.mode === 'range') {
-      rows = rows.slice(Math.max(0, rangeFilter.from - 1), rangeFilter.to);
-    }
-
-    return { ...activeTab, rows };
-  }, [activeTab, rangeFilter, queryConditions]);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
+  const processFiles = async (files: FileList | File[]) => {
     setStatus(AppStatus.LOADING);
     try {
       const newTabs: DBFData[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        if (!file.name.toLowerCase().endsWith('.dbf')) continue;
+        
         const buffer = await file.arrayBuffer();
         const dbfData = await DBFParser.parse(buffer, file.name);
         newTabs.push(dbfData);
       }
       
-      const newIndex = tabs.length;
-      setTabs(prev => [...prev, ...newTabs]);
-      setActiveTabIndex(newIndex);
-      setStatus(AppStatus.READY);
+      if (newTabs.length > 0) {
+        const newIndex = tabs.length;
+        setTabs(prev => [...prev, ...newTabs]);
+        setActiveTabIndex(newIndex);
+        setStatus(AppStatus.READY);
+      } else {
+        setStatus(tabs.length > 0 ? AppStatus.READY : AppStatus.IDLE);
+      }
     } catch (err) {
       console.error(err);
       setError('Failed to parse DBF file.');
       setStatus(AppStatus.ERROR);
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    processFiles(files);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files) {
+      processFiles(e.dataTransfer.files);
+    }
   };
 
   const addQueryCondition = () => {
@@ -355,8 +350,60 @@ const App: React.FC = () => {
     });
   };
 
+  const visibleData = useMemo(() => {
+    if (!activeTab) return null;
+    
+    // 1. Apply Query Filtering
+    let processedRows = activeTab.rows;
+    if (queryConditions.length > 0) {
+      processedRows = processedRows.filter(row => {
+        return queryConditions.every(cond => {
+          const rowValue = (row[cond.field] ?? '').toString().toLowerCase();
+          const targetValue = cond.value.toLowerCase();
+          
+          switch (cond.operator) {
+            case 'equals': return rowValue === targetValue;
+            case 'contains': return rowValue.includes(targetValue);
+            case 'starts': return rowValue.startsWith(targetValue);
+            case 'gt': return parseFloat(rowValue) > parseFloat(targetValue);
+            case 'lt': return parseFloat(rowValue) < parseFloat(targetValue);
+            default: return true;
+          }
+        });
+      });
+    }
+
+    // 2. Apply Slicer
+    let rows = processedRows;
+    if (rangeFilter.mode === 'first') {
+      rows = rows.slice(0, rangeFilter.count);
+    } else if (rangeFilter.mode === 'last') {
+      rows = rows.slice(-rangeFilter.count);
+    } else if (rangeFilter.mode === 'range') {
+      rows = rows.slice(Math.max(0, rangeFilter.from - 1), rangeFilter.to);
+    }
+
+    return { ...activeTab, rows };
+  }, [activeTab, rangeFilter, queryConditions]);
+
   return (
-    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300">
+    <div 
+      className="flex h-screen w-full bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300 relative"
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {/* Drag Overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 z-[200] bg-indigo-600/20 backdrop-blur-md border-4 border-dashed border-indigo-500 flex items-center justify-center pointer-events-none animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 p-12 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6 scale-110">
+            <i className="fa-solid fa-cloud-arrow-up text-7xl text-indigo-500 animate-bounce"></i>
+            <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tighter">Drop to Load DBF</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-bold">Instantly parse and view your data</p>
+          </div>
+        </div>
+      )}
+
       <CustomModal 
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
@@ -367,94 +414,128 @@ const App: React.FC = () => {
         confirmLabel={modalConfig.variant === 'danger' ? 'Delete' : 'Confirm'}
       />
 
+      {/* Floating Zen Mode Controls */}
+      <div className="fixed bottom-6 right-6 z-[100] flex gap-2">
+        {!sidebarVisible && (
+          <button 
+            onClick={() => setSidebarVisible(true)}
+            className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-all active:scale-90"
+            title="Show Sidebar"
+          >
+            <i className="fa-solid fa-arrow-left"></i>
+          </button>
+        )}
+        {!headerVisible && (
+          <button 
+            onClick={() => setHeaderVisible(true)}
+            className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-all active:scale-90"
+            title="Show Header"
+          >
+            <i className="fa-solid fa-arrow-down"></i>
+          </button>
+        )}
+      </div>
+
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between shadow-sm z-30 shrink-0 transition-colors duration-300">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-indigo-200 dark:shadow-indigo-900/20 shadow-lg">
-              <i className="fa-solid fa-database text-white text-lg"></i>
+        {headerVisible && (
+          <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between shadow-sm z-30 shrink-0 transition-all duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-indigo-200 dark:shadow-indigo-900/20 shadow-lg">
+                <i className="fa-solid fa-database text-white text-lg"></i>
+              </div>
+              <div>
+                <h1 className="font-bold text-slate-800 dark:text-slate-100 leading-tight">DBF Nexus Professional</h1>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold text-nowrap">Online DBF Viewer & Editor</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-slate-800 dark:text-slate-100 leading-tight">DBF Nexus Professional</h1>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold text-nowrap">Online DBF Viewer & Editor</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            {activeTab && (
-              <>
-                <div className="relative group">
-                  <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                  <input
-                    type="text"
-                    placeholder="Quick Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm w-48 focus:w-64 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-200"
-                  />
-                </div>
-                <button
-                  onClick={() => setShowQueryBuilder(!showQueryBuilder)}
-                  className={`p-2 w-10 h-10 border rounded-lg transition-all flex items-center justify-center ${showQueryBuilder ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
-                  title="Filter Logic Engine"
-                >
-                  <i className="fa-solid fa-filter"></i>
-                </button>
-                <button
-                  onClick={() => setShowFindReplace(!showFindReplace)}
-                  className={`p-2 w-10 h-10 border rounded-lg transition-all flex items-center justify-center ${showFindReplace ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
-                  title="Find & Replace"
-                >
-                  <i className="fa-solid fa-repeat"></i>
-                </button>
-                <button
-                  onClick={() => setShowColumnManager(!showColumnManager)}
-                  className="p-2 w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center"
-                  title="Manage Columns"
-                >
-                  <i className="fa-solid fa-columns"></i>
-                </button>
-                <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                <button
-                  onClick={handleAddRow}
-                  className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  + Row
-                </button>
-                <div className="relative group">
-                  <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md flex items-center gap-2">
-                    <i className="fa-solid fa-download"></i> Export <i className="fa-solid fa-chevron-down text-[10px]"></i>
-                  </button>
-                  <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                    <button onClick={() => handleExport('dbf')} className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium text-slate-700 dark:text-slate-300 first:rounded-t-xl">Original (.dbf)</button>
-                    <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium text-slate-700 dark:text-slate-300">Spreadsheet (.csv)</button>
-                    <button onClick={() => handleExport('json')} className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium text-slate-700 dark:text-slate-300 last:rounded-b-xl">Data (.json)</button>
+            <div className="flex items-center gap-3">
+              {activeTab && (
+                <>
+                  <div className="relative group">
+                    <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input
+                      type="text"
+                      placeholder="Quick Search..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm w-48 focus:w-64 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-200"
+                    />
                   </div>
-                </div>
-                <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
-              </>
-            )}
-            
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center"
-              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              <i className={`fa-solid ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-            </button>
+                  <button
+                    onClick={() => setShowQueryBuilder(!showQueryBuilder)}
+                    className={`p-2 w-10 h-10 border rounded-lg transition-all flex items-center justify-center ${showQueryBuilder ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+                    title="Filter Logic Engine"
+                  >
+                    <i className="fa-solid fa-filter"></i>
+                  </button>
+                  <button
+                    onClick={() => setShowFindReplace(!showFindReplace)}
+                    className={`p-2 w-10 h-10 border rounded-lg transition-all flex items-center justify-center ${showFindReplace ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+                    title="Find & Replace"
+                  >
+                    <i className="fa-solid fa-repeat"></i>
+                  </button>
+                  <button
+                    onClick={() => setShowColumnManager(!showColumnManager)}
+                    className="p-2 w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center"
+                    title="Manage Columns"
+                  >
+                    <i className="fa-solid fa-columns"></i>
+                  </button>
+                  <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                  <button
+                    onClick={handleAddRow}
+                    className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    + Row
+                  </button>
+                  <div className="relative group">
+                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md flex items-center gap-2">
+                      <i className="fa-solid fa-download"></i> Export <i className="fa-solid fa-chevron-down text-[10px]"></i>
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                      <button onClick={() => handleExport('dbf')} className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium text-slate-700 dark:text-slate-300 first:rounded-t-xl">Original (.dbf)</button>
+                      <button onClick={() => handleExport('csv')} className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium text-slate-700 dark:text-slate-300">Spreadsheet (.csv)</button>
+                      <button onClick={() => handleExport('json')} className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium text-slate-700 dark:text-slate-300 last:rounded-b-xl">Data (.json)</button>
+                    </div>
+                  </div>
+                  <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                </>
+              )}
+              
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-2 w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center"
+                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                <i className={`fa-solid ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+              </button>
 
-            <input type="file" ref={fileInputRef} className="hidden" accept=".dbf" multiple onChange={handleFileUpload} />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className={`p-2 w-10 h-10 rounded-lg transition-all flex items-center justify-center ${tabs.length === 0 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-              title="Upload DBF Files"
-            >
-              <i className="fa-solid fa-folder-plus"></i>
-            </button>
-          </div>
-        </header>
+              <input type="file" ref={fileInputRef} className="hidden" accept=".dbf" multiple onChange={handleFileUpload} />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-2 w-10 h-10 rounded-lg transition-all flex items-center justify-center ${tabs.length === 0 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                title="Upload DBF Files"
+              >
+                <i className="fa-solid fa-folder-plus"></i>
+              </button>
+              
+              {activeTab && (
+                <button
+                  onClick={() => setHeaderVisible(false)}
+                  className="p-2 w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all flex items-center justify-center"
+                  title="Hide Header (Zen Mode)"
+                >
+                  <i className="fa-solid fa-compress"></i>
+                </button>
+              )}
+            </div>
+          </header>
+        )}
 
-        {tabs.length > 0 && (
-          <div className="flex bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-8 pt-2 gap-1 z-20 shrink-0 transition-colors">
+        {tabs.length > 0 && headerVisible && (
+          <div className="flex bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-8 pt-2 gap-1 z-20 shrink-0 transition-all">
             {tabs.map((tab, idx) => (
               <div key={tab.id} onClick={() => setActiveTabIndex(idx)}
                 className={`group flex items-center gap-2 px-4 py-2 rounded-t-lg text-xs font-semibold cursor-pointer transition-all border-x border-t
@@ -468,8 +549,8 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {activeTab && (
-          <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-2 flex flex-col z-20 transition-colors">
+        {activeTab && headerVisible && (
+          <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-2 flex flex-col z-20 transition-all">
             <div className="flex items-center gap-6 overflow-x-auto whitespace-nowrap pb-1">
               <div className="flex items-center gap-2">
                 <i className="fa-solid fa-layer-group text-slate-400 text-[10px]"></i>
@@ -522,7 +603,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className="flex-1 p-8 overflow-hidden relative flex flex-col">
+        <div className={`flex-1 overflow-hidden relative flex flex-col transition-all duration-300 ${headerVisible ? 'p-8' : 'p-2'}`}>
           {showQueryBuilder && activeTab && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-[400px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 animate-in fade-in slide-in-from-top-4">
               <div className="flex items-center justify-between mb-4">
@@ -625,15 +706,23 @@ const App: React.FC = () => {
               <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-indigo-100/50 dark:shadow-indigo-900/10">
                 <i className="fa-solid fa-database text-4xl text-indigo-500"></i>
               </div>
-              <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-3">DBF Nexus Online Studio</h2>
-              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-10 leading-relaxed">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis.</p>
-              <button onClick={() => fileInputRef.current?.click()} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all">START EDITING</button>
+              <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 uppercase tracking-tighter">DBF Nexus Online Studio</h2>
+              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-10 leading-relaxed font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis.</p>
+              <div className="flex flex-col items-center gap-6">
+                <button onClick={() => fileInputRef.current?.click()} className="px-10 py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-2xl shadow-indigo-300 dark:shadow-indigo-900/30 hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-widest text-xs">
+                  SELECT DBF FILE
+                </button>
+                <div className="flex items-center gap-3 text-slate-400 text-sm font-bold">
+                  <i className="fa-solid fa-cloud-arrow-up text-indigo-400 animate-bounce"></i>
+                  <span>Or just drag and drop anywhere</span>
+                </div>
+              </div>
             </div>
           )}
 
           {visibleData && (
             <div className="h-full flex flex-col animate-in slide-in-from-bottom-4 duration-700">
-               <div className="flex-1 min-h-0">
+               <div className="flex-1 min-h-0 relative">
                   <VirtualTable 
                     data={visibleData} 
                     searchTerm={searchTerm} 
@@ -651,10 +740,23 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
-      <Sidebar 
-        data={activeTab} 
-        selectedRowIndex={currentSelectedRowIndex} 
-      />
+
+      {sidebarVisible && (
+        <div className="relative flex">
+           {/* Sidebar Toggle Handle */}
+           <button 
+             onClick={() => setSidebarVisible(false)}
+             className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 z-50 transition-all hover:scale-110 active:scale-90"
+             title="Hide Sidebar"
+           >
+             <i className="fa-solid fa-chevron-right"></i>
+           </button>
+           <Sidebar 
+             data={activeTab} 
+             selectedRowIndex={currentSelectedRowIndex} 
+           />
+        </div>
+      )}
     </div>
   );
 };
