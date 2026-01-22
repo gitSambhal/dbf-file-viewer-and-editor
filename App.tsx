@@ -283,8 +283,8 @@ const App: React.FC = () => {
               <i className="fa-solid fa-database text-white text-lg"></i>
             </div>
             <div>
-              <h1 className="font-bold text-slate-800 leading-tight">DBF Nexus</h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">V2.5 Professional</p>
+              <h1 className="font-bold text-slate-800 leading-tight">DBF Nexus Professional</h1>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold text-nowrap">Online DBF Viewer & Editor</p>
             </div>
           </div>
 
@@ -442,8 +442,8 @@ const App: React.FC = () => {
               <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-indigo-100/50">
                 <i className="fa-solid fa-database text-4xl text-indigo-500"></i>
               </div>
-              <h2 className="text-3xl font-extrabold text-slate-800 mb-3">Professional DBF Studio</h2>
-              <p className="text-slate-500 max-w-lg mx-auto mb-10 leading-relaxed">The browser-based power tool for dBase tables. Virtualized scroll, multi-format exports, and AI-driven data intelligence.</p>
+              <h2 className="text-3xl font-extrabold text-slate-800 mb-3">DBF Nexus Online Studio</h2>
+              <p className="text-slate-500 max-w-lg mx-auto mb-10 leading-relaxed">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and AI-driven data intelligence.</p>
               <button onClick={() => fileInputRef.current?.click()} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all">START EDITING</button>
             </div>
           )}
