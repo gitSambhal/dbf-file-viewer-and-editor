@@ -2,11 +2,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { DBFData } from "../types";
 
-// Fix: Initializing GoogleGenAI with the API key directly from environment variables as per SDK guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const analyzeData = async (data: DBFData): Promise<string> => {
-  // Fix: Assuming the API key is pre-configured and accessible in the environment as per guidelines
+  // Initialization moved inside the function to ensure process.env.API_KEY
+  // is available at runtime, satisfying SDK requirements for browser environments.
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.error("Gemini API Key is missing from process.env.API_KEY");
+    return "AI analysis is unavailable: API Key not configured.";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   const sampleRows = data.rows.slice(0, 15);
   const fields = data.header.fields.map(f => `${f.name} (${f.type}, len ${f.length})`).join(', ');
 
@@ -28,10 +33,10 @@ export const analyzeData = async (data: DBFData): Promise<string> => {
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    // Fix: Accessing .text property directly as it returns the generated string
+    
     return response.text || "No analysis generated.";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Failed to analyze data with Gemini.";
+    return "Failed to analyze data with Gemini. " + (error instanceof Error ? error.message : "Unexpected error.");
   }
 };
