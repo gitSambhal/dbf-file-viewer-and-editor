@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { DBFData, AppStatus, DBFRow, RangeFilter } from './types';
 import { DBFParser } from './services/dbfParser';
 import VirtualTable from './components/VirtualTable';
@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
+  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   
   const [frFind, setFrFind] = useState('');
   const [frReplace, setFrReplace] = useState('');
@@ -43,6 +44,24 @@ const App: React.FC = () => {
   });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasApiKey(selected);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeySelection = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Assume success as per platform instructions to mitigate race conditions
+      setHasApiKey(true);
+    }
+  };
 
   const activeTab = tabs[activeTabIndex] || null;
   const currentSelectedRowIndex = activeTab ? selectedRowIndices[activeTab.id] ?? null : null;
@@ -466,7 +485,13 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
-      <Sidebar data={activeTab} selectedRowIndex={currentSelectedRowIndex} />
+      <Sidebar 
+        data={activeTab} 
+        selectedRowIndex={currentSelectedRowIndex} 
+        hasApiKey={hasApiKey} 
+        onSelectKey={handleOpenKeySelection}
+        setHasApiKey={setHasApiKey}
+      />
     </div>
   );
 };

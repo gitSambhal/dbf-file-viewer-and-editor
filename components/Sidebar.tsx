@@ -6,9 +6,12 @@ import { analyzeData } from '../services/geminiService';
 interface SidebarProps {
   data: DBFData | null;
   selectedRowIndex: number | null;
+  hasApiKey: boolean;
+  onSelectKey: () => void;
+  setHasApiKey: (val: boolean) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ data, selectedRowIndex }) => {
+const Sidebar: React.FC<SidebarProps> = ({ data, selectedRowIndex, hasApiKey, onSelectKey, setHasApiKey }) => {
   const [activeMode, setActiveMode] = useState<'ai' | 'inspector' | 'stats'>('inspector');
   const [analysis, setAnalysis] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -16,9 +19,18 @@ const Sidebar: React.FC<SidebarProps> = ({ data, selectedRowIndex }) => {
   const handleAnalyze = async () => {
     if (!data) return;
     setLoading(true);
-    const result = await analyzeData(data);
-    setAnalysis(result);
-    setLoading(false);
+    try {
+      const result = await analyzeData(data);
+      if (result.includes("Requested entity was not found")) {
+        // Reset key selection if invalid key detected as per platform rules
+        setHasApiKey(false);
+      }
+      setAnalysis(result);
+    } catch (err) {
+      setAnalysis("An unexpected error occurred during analysis.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectedRow = selectedRowIndex !== null && data ? data.rows[selectedRowIndex] : null;
@@ -192,8 +204,28 @@ const Sidebar: React.FC<SidebarProps> = ({ data, selectedRowIndex }) => {
               Nexus AI Engine
             </h2>
 
-            {!analysis && !loading && (
-              <div className="flex flex-col items-center justify-center text-center p-4 py-20">
+            {!hasApiKey && (
+              <div className="flex flex-col items-center justify-center text-center p-4 py-20 animate-in fade-in">
+                <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mb-6 text-indigo-400">
+                  <i className="fa-solid fa-key text-4xl"></i>
+                </div>
+                <h3 className="text-slate-800 font-black mb-3 text-sm">API Key Required</h3>
+                <p className="text-slate-500 text-xs mb-8 leading-relaxed">
+                  To use AI Insights, you must select your own paid Google Gemini API key.
+                  <br />
+                  <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-indigo-600 hover:underline font-bold">Learn about billing</a>
+                </p>
+                <button
+                  onClick={onSelectKey}
+                  className="px-8 py-3 bg-indigo-600 text-white rounded-xl text-sm font-black shadow-lg hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-plug"></i> Connect API Key
+                </button>
+              </div>
+            )}
+
+            {hasApiKey && !analysis && !loading && (
+              <div className="flex flex-col items-center justify-center text-center p-4 py-20 animate-in fade-in">
                 <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mb-6 text-indigo-200">
                   <i className="fa-solid fa-brain text-4xl"></i>
                 </div>
@@ -207,6 +239,9 @@ const Sidebar: React.FC<SidebarProps> = ({ data, selectedRowIndex }) => {
                     ${!data ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                 >
                   START ANALYSIS
+                </button>
+                <button onClick={onSelectKey} className="mt-4 text-[10px] text-slate-400 hover:text-indigo-600 font-bold uppercase tracking-widest">
+                  Change API Key
                 </button>
               </div>
             )}
@@ -246,7 +281,7 @@ const Sidebar: React.FC<SidebarProps> = ({ data, selectedRowIndex }) => {
            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
            <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">System Ready</span>
         </div>
-        <span className="text-[10px] text-slate-300 font-mono">v2.5.1-LATEST</span>
+        <span className="text-[10px] text-slate-300 font-mono">v2.5.2-DYNAMIC-KEY</span>
       </div>
     </div>
   );
