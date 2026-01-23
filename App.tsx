@@ -52,13 +52,26 @@ const App: React.FC = () => {
     variant: 'info'
   });
 
-  const [rangeFilter, setRangeFilter] = useState<RangeFilter>({ 
-    mode: 'all', 
-    count: 100, 
-    from: 1, 
-    to: 100 
+  const [rangeFilter, setRangeFilter] = useState<RangeFilter>({
+    mode: 'all',
+    count: 100,
+    from: 1,
+    to: 100
   });
-  
+
+  // Tab Context Menu State
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    tabIndex: number;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    tabIndex: -1
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -85,6 +98,7 @@ const App: React.FC = () => {
         if (showFindReplace) setShowFindReplace(false);
         if (showQueryBuilder) setShowQueryBuilder(false);
         if (modalConfig.isOpen) setModalConfig(prev => ({...prev, isOpen: false}));
+        if (tabContextMenu.isOpen) setTabContextMenu(prev => ({ ...prev, isOpen: false }));
         if (!headerVisible || !sidebarVisible) {
           setHeaderVisible(true);
           if (tabs.length > 0) setSidebarVisible(true);
@@ -92,9 +106,19 @@ const App: React.FC = () => {
       }
     };
 
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tabContextMenu.isOpen) {
+        setTabContextMenu(prev => ({ ...prev, isOpen: false }));
+      }
+    };
+
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, showShortcuts, showColumnManager, showFindReplace, showQueryBuilder, modalConfig.isOpen, headerVisible, sidebarVisible, tabs.length]);
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeTab, showShortcuts, showColumnManager, showFindReplace, showQueryBuilder, modalConfig.isOpen, headerVisible, sidebarVisible, tabs.length, tabContextMenu.isOpen]);
   
   const handleOpenFilesClick = async () => {
     try {
@@ -530,6 +554,54 @@ const App: React.FC = () => {
     });
   };
 
+  const closeAllTabs = () => {
+    setTabs([]);
+    setStatus(AppStatus.IDLE);
+    setActiveTabIndex(-1);
+    setSidebarVisible(false);
+    setTabContextMenu(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const closeOtherTabs = (keepIndex: number) => {
+    setTabs(prev => [prev[keepIndex]]);
+    setActiveTabIndex(0);
+    setTabContextMenu(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const closeTabsToRight = (fromIndex: number) => {
+    setTabs(prev => {
+      const next = prev.slice(0, fromIndex + 1);
+      if (activeTabIndex > fromIndex) {
+        setActiveTabIndex(fromIndex);
+      }
+      return next;
+    });
+    setTabContextMenu(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const closeTabsToLeft = (fromIndex: number) => {
+    setTabs(prev => {
+      const next = prev.slice(fromIndex);
+      setActiveTabIndex(0);
+      return next;
+    });
+    setTabContextMenu(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleTabContextMenu = (e: React.MouseEvent, tabIndex: number) => {
+    e.preventDefault();
+    setTabContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      tabIndex
+    });
+  };
+
+  const closeTabContextMenu = () => {
+    setTabContextMenu(prev => ({ ...prev, isOpen: false }));
+  };
+
   const visibleData = useMemo(() => {
     if (!activeTab) return null;
     
@@ -642,6 +714,7 @@ const App: React.FC = () => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm w-48 focus:w-64 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-200"
+                      title="Quick Search"
                     />
                   </div>
                   <button
@@ -669,11 +742,12 @@ const App: React.FC = () => {
                   <button
                     onClick={handleAddRow}
                     className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    title="Add New Row"
                   >
                     + Row
                   </button>
                   <div className="relative group">
-                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md flex items-center gap-2">
+                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md flex items-center gap-2" title="Export Data">
                       <i className="fa-solid fa-download"></i> Export <i className="fa-solid fa-chevron-down text-[10px]"></i>
                     </button>
                     <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
@@ -719,7 +793,7 @@ const App: React.FC = () => {
         {tabs.length > 0 && (
           <div className={`flex bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 ${headerVisible ? 'px-8 pt-2' : 'px-4 pt-2'} gap-1 z-20 shrink-0 transition-all`}>
             {tabs.map((tab, idx) => (
-              <div key={tab.id} onClick={() => setActiveTabIndex(idx)}
+              <div key={tab.id} onClick={() => setActiveTabIndex(idx)} onContextMenu={(e) => handleTabContextMenu(e, idx)}
                 className={`group flex items-center gap-2 px-4 py-2 rounded-t-lg text-xs font-semibold cursor-pointer transition-all border-x border-t
                   ${activeTabIndex === idx ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm translate-y-[1px]' : 'bg-transparent border-transparent text-slate-500 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-900'}`}>
                 <span className="max-w-[150px] truncate">{tab.fileName}</span>
@@ -728,6 +802,51 @@ const App: React.FC = () => {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Tab Context Menu */}
+        {tabContextMenu.isOpen && (
+          <div
+            className="fixed z-[100] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl py-2 min-w-[180px]"
+            style={{ left: tabContextMenu.x, top: tabContextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { closeTab(tabContextMenu.tabIndex); }}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <i className="fa-solid fa-xmark text-red-500"></i>
+              Close Tab
+            </button>
+            <button
+              onClick={closeAllTabs}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <i className="fa-solid fa-xmark text-red-500"></i>
+              Close All Tabs
+            </button>
+            <button
+              onClick={() => closeOtherTabs(tabContextMenu.tabIndex)}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <i className="fa-solid fa-xmark text-red-500"></i>
+              Close Other Tabs
+            </button>
+            <button
+              onClick={() => closeTabsToRight(tabContextMenu.tabIndex)}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <i className="fa-solid fa-arrow-right text-slate-500"></i>
+              Close Tabs to Right
+            </button>
+            <button
+              onClick={() => closeTabsToLeft(tabContextMenu.tabIndex)}
+              className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <i className="fa-solid fa-arrow-left text-slate-500"></i>
+              Close Tabs to Left
+            </button>
           </div>
         )}
 
