@@ -2,7 +2,7 @@
 {
   "name": "DBF Nexus Professional",
   "short_name": "DBF Nexus",
-  "description": "Professional browser-based DBF editor with large file support.",
+  "description": "Professional browser-based DBF editor with large file support, query builder, find & replace, multi-tab interface, and export capabilities.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0f172a",
