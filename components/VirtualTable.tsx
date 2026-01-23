@@ -212,7 +212,7 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
 
   const indexWidth = 60;
   const actionsWidth = 80;
-  const totalWidth = indexWidth + Object.values(columnWidths).reduce((a, b) => a + b, 0) + actionsWidth;
+  const totalWidth = indexWidth + (Object.values(columnWidths) as number[]).reduce((a, b) => a + b, 0) + actionsWidth;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-full animate-in fade-in duration-300 transition-colors">
@@ -293,7 +293,7 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
                       <div 
                         key={field.name} 
                         style={{ width: columnWidths[field.name] }}
-                        className="px-6 py-2 text-sm truncate self-center relative shrink-0"
+                        className={`px-6 py-2 text-sm self-center relative shrink-0 group overflow-visible`}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           setEditingCell({ row: originalIndex, field: field.name });
@@ -311,7 +311,22 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
                             }}
                           />
                         ) : (
-                          renderValue(row[field.name], field.type)
+                          (() => {
+                            const change = (data.changes && data.changes[originalIndex]) ? (data.changes[originalIndex] as any)[field.name] : null;
+                            const highlightClass = change ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700 rounded' : '';
+                            return (
+                              <>
+                                <span className={`inline-block px-1 ${highlightClass} truncate max-w-full`}>
+                                  {renderValue(row[field.name], field.type)}
+                                </span>
+                                {change && (
+                                  <span className="absolute left-1/2 -translate-x-1/2 top-full translate-y-1 px-2 py-1 rounded bg-slate-900 text-white text-[10px] opacity-0 group-hover:opacity-100 pointer-events-none shadow-lg whitespace-nowrap z-[200]">
+                                    Old: {String(change.oldValue)}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()
                         )}
                       </div>
                     ))}

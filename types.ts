@@ -17,12 +17,23 @@ export interface DBFHeader {
 
 export type DBFRow = Record<string, any>;
 
+export interface CellChange {
+  oldValue: any;
+  newValue: any;
+  updatedAt: number;
+}
+
+export type ChangesMap = Record<number, Record<string, CellChange>>;
+
 export interface DBFData {
   id: string;
   header: DBFHeader;
   rows: DBFRow[];
   fileName: string;
   hiddenColumns: string[];
+  fileHandle?: any;
+  lastModified?: number;
+  changes?: ChangesMap;
 }
 
 export interface QueryCondition {

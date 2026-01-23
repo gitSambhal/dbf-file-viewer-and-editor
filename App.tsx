@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { DBFData, AppStatus, DBFRow, RangeFilter, QueryCondition } from './types';
+import { DBFData, AppStatus, DBFRow, RangeFilter, QueryCondition, ChangesMap } from './types';
 import { DBFParser } from './services/dbfParser';
 import VirtualTable from './components/VirtualTable';
 import Sidebar from './components/Sidebar';
@@ -20,7 +20,7 @@ const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
   
   // Layout Management
-  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -67,9 +67,11 @@ const App: React.FC = () => {
             }
           ]
         });
-        const files = await Promise.all(handles.map((h: any) => h.getFile()));
-        if (files.length > 0) {
-          await processFiles(files as File[]);
+        const items: Array<{ file: File; handle?: any }> = await Promise.all(
+          handles.map(async (h: any) => ({ file: await h.getFile(), handle: h }))
+        );
+        if (items.length > 0) {
+          await processFileSources(items);
         }
       } else {
         fileInputRef.current?.click();
@@ -118,6 +120,57 @@ const App: React.FC = () => {
       setStatus(AppStatus.ERROR);
     }
   };
+  
+  const processFileSources = async (items: Array<{ file: File; handle?: any }>) => {
+    setStatus(AppStatus.LOADING);
+    try {
+      const newTabs: DBFData[] = [];
+      for (const { file, handle } of items) {
+        if (!file.name.toLowerCase().endsWith('.dbf')) continue;
+        const buffer = await file.arrayBuffer();
+        const parsed = await DBFParser.parse(buffer, file.name);
+        newTabs.push({ ...parsed, fileHandle: handle, lastModified: file.lastModified, changes: {} });
+      }
+      if (newTabs.length > 0) {
+        const newIndex = tabs.length;
+        setTabs(prev => [...prev, ...newTabs]);
+        setActiveTabIndex(newIndex);
+        setStatus(AppStatus.READY);
+        setSidebarVisible(true);
+      } else {
+        setStatus(tabs.length > 0 ? AppStatus.READY : AppStatus.IDLE);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to parse DBF file.');
+      setStatus(AppStatus.ERROR);
+    }
+  };
+  
+  const computeChanges = (prev: DBFData, next: DBFData): ChangesMap => {
+    const changes: ChangesMap = {};
+    const maxLen = Math.max(prev.rows.length, next.rows.length);
+    for (let i = 0; i < maxLen; i++) {
+      const prevRow = prev.rows[i];
+      const nextRow = next.rows[i];
+      if (!nextRow || !prevRow) continue;
+      const rowChanges: Record<string, any> = {};
+      prev.header.fields.forEach(f => {
+        const k = f.name;
+        const a = prevRow[k];
+        const b = nextRow[k];
+        const aStr = a?.toString?.() ?? '';
+        const bStr = b?.toString?.() ?? '';
+        if (aStr !== bStr) {
+          rowChanges[k] = { oldValue: a, newValue: b, updatedAt: Date.now() };
+        }
+      });
+      if (Object.keys(rowChanges).length > 0) {
+        changes[i] = rowChanges as any;
+      }
+    }
+    return changes;
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -135,13 +188,77 @@ const App: React.FC = () => {
     setIsDragging(false);
   };
 
-  const onDrop = (e: React.DragEvent) => {
+  const onDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(Array.from(e.dataTransfer.files));
+    const dt = e.dataTransfer;
+    const items: Array<{ file: File; handle?: any }> = [];
+    try {
+      const anyItem = (dt.items && dt.items.length > 0) ? dt.items : null;
+      if (anyItem) {
+        for (let i = 0; i < dt.items.length; i++) {
+          const it: any = dt.items[i];
+          if (it.kind === 'file') {
+            if (typeof it.getAsFileSystemHandle === 'function') {
+              const handle = await it.getAsFileSystemHandle();
+              if (handle && handle.kind === 'file') {
+                const file = await handle.getFile();
+                items.push({ file, handle });
+                continue;
+              }
+            }
+            const fileObj = typeof it.getAsFile === 'function' ? (it.getAsFile() as File | null) : null;
+            if (fileObj) items.push({ file: fileObj as File });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Drag-and-drop handle acquisition failed, falling back to files.', err);
+    }
+    if (items.length === 0 && dt.files && dt.files.length > 0) {
+      Array.from(dt.files).forEach(f => items.push({ file: f as File }));
+    }
+    if (items.length > 0) {
+      await processFileSources(items);
     }
   };
+  
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      const updates: Array<{ index: number; data: DBFData }> = [];
+      for (let i = 0; i < tabs.length; i++) {
+        const tab = tabs[i];
+        if (!tab.fileHandle) continue;
+        try {
+          const file: File = await (tab.fileHandle as any).getFile();
+          if (!tab.lastModified || file.lastModified > tab.lastModified) {
+            const buffer = await file.arrayBuffer();
+            const parsed = await DBFParser.parse(buffer, file.name);
+            const changes = computeChanges(tab, parsed);
+            updates.push({
+              index: i,
+              data: { ...parsed, id: tab.id, hiddenColumns: tab.hiddenColumns, fileHandle: tab.fileHandle, lastModified: file.lastModified, changes }
+            });
+          }
+        } catch (err) {
+          // Ignore polling errors
+        }
+      }
+      if (!cancelled && updates.length > 0) {
+        setTabs(prev => {
+          const next = [...prev];
+          updates.forEach(u => { next[u.index] = u.data; });
+          return next;
+        });
+      }
+    };
+    const interval = setInterval(poll, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [tabs]);
 
   const addQueryCondition = () => {
     if (!newCondition.field || !newCondition.value) return;
@@ -366,6 +483,7 @@ const App: React.FC = () => {
       if (next.length === 0) {
         setStatus(AppStatus.IDLE);
         setActiveTabIndex(-1);
+        setSidebarVisible(false);
       } else if (activeTabIndex >= next.length) {
         setActiveTabIndex(next.length - 1);
       }
