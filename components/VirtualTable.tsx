@@ -36,35 +36,51 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
 }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const [editingCell, setEditingCell] = useState<{ row: number; field: string } | null>(null);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false, rowIndex: null });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [tableHeight, setTableHeight] = useState(600);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+    const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [resizingClientX, setResizingClientX] = useState<number>(0);
+
+    const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false, rowIndex: null });
+
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const [tableHeight, setTableHeight] = useState(600);
+
+      const handleResizeStart = (fieldName: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn(fieldName);
+    setResizingClientX(e.clientX);
+  };
+
+  const handleResizeMove = (e: MouseEvent) => {
+    if (resizingColumn) {
+      const deltaX = e.clientX - resizingClientX;
+      const newWidth = (columnWidths[resizingColumn] || 180) + deltaX;
+      if (newWidth > 50) { // Minimum column width
+        setColumnWidths(prev => ({ ...prev, [resizingColumn]: newWidth }));
+        setResizingClientX(e.clientX);
+      }
+    }
+  };
+
+  const handleResizeEnd = () => {
+    setResizingColumn(null);
+  };
 
   useEffect(() => {
-    const handleClickOutside = () => setContextMenu(prev => ({ ...prev, visible: false }));
-    window.addEventListener('click', handleClickOutside);
-    window.addEventListener('scroll', handleClickOutside, true);
-    
-    // Auto-resize table height based on parent container
-    const resizeObserver = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        // Leave room for header and footer in the table component
-        const headerHeight = 42; // column headers
-        const footerHeight = 42; // summary bar
-        setTableHeight(entry.contentRect.height - headerHeight - footerHeight);
-      }
-    });
-
-    if (containerRef.current?.parentElement) {
-      resizeObserver.observe(containerRef.current.parentElement);
+    if (resizingColumn) {
+      window.addEventListener('mousemove', handleResizeMove);
+      window.addEventListener('mouseup', handleResizeEnd);
+    } else {
+      window.removeEventListener('mousemove', handleResizeMove);
+      window.removeEventListener('mouseup', handleResizeEnd);
     }
-
     return () => {
-      window.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('scroll', handleClickOutside, true);
-      resizeObserver.disconnect();
+      window.removeEventListener('mousemove', handleResizeMove);
+      window.removeEventListener('mouseup', handleResizeEnd);
     };
-  }, []);
+  }, [resizingColumn, handleResizeMove, handleResizeEnd]);
 
   const handleEditSubmit = (rowIndex: number, fieldName: string, value: any) => {
     onEdit(rowIndex, fieldName, value);
@@ -122,6 +138,38 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
     return rows;
   }, [data.rows, searchTerm, sortConfig]);
 
+  useEffect(() => {
+    const newWidths: Record<string, number> = {};
+    visibleFields.forEach(field => {
+        newWidths[field.name] = columnWidths[field.name] || 180;
+    });
+    setColumnWidths(newWidths);
+
+    const handleClickOutside = () => setContextMenu(prev => ({ ...prev, visible: false }));
+    window.addEventListener('click', handleClickOutside);
+    window.addEventListener('scroll', handleClickOutside, true);
+    
+    // Auto-resize table height based on parent container
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        // Leave room for header and footer in the table component
+        const headerHeight = 42; // column headers
+        const footerHeight = 42; // summary bar
+        setTableHeight(entry.contentRect.height - headerHeight - footerHeight);
+      }
+    });
+
+    if (containerRef.current?.parentElement) {
+      resizeObserver.observe(containerRef.current.parentElement);
+    }
+
+    return () => {
+      window.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('scroll', handleClickOutside, true);
+      resizeObserver.disconnect();
+    };
+  }, [visibleFields]);
+
   const rowHeight = 48;
   const visibleRowsCount = Math.ceil(tableHeight / rowHeight);
   const totalHeight = filteredRows.length * rowHeight;
@@ -162,10 +210,9 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
     return <span className="text-slate-700 dark:text-slate-300">{val.toString()}</span>;
   };
 
-  const columnWidth = 180;
   const indexWidth = 60;
   const actionsWidth = 80;
-  const totalWidth = indexWidth + visibleFields.length * columnWidth + actionsWidth;
+  const totalWidth = indexWidth + Object.values(columnWidths).reduce((a, b) => a + b, 0) + actionsWidth;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-full animate-in fade-in duration-300 transition-colors">
@@ -198,14 +245,18 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
              {visibleFields.map(field => (
                <div 
                  key={field.name} 
-                 style={{ width: columnWidth }} 
+                 style={{ width: columnWidths[field.name] }} 
                  onClick={() => onSort(field.name)}
-                 className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate shrink-0 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group flex items-center justify-between"
+                 className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate shrink-0 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group flex items-center justify-between relative"
                >
                  <span className="truncate">
                     {field.name}
                     <span className="ml-1 text-[10px] text-slate-400 dark:text-slate-500 font-normal">({field.type})</span>
                  </span>
+                 <div
+                    className="absolute top-0 right-0 h-full w-2 cursor-col-resize"
+                    onMouseDown={(e) => handleResizeStart(field.name, e)}
+                  />
                  <span className="ml-2 text-indigo-400 transition-opacity">
                     {sortConfig.key === field.name ? (
                       sortConfig.direction === 'asc' ? <i className="fa-solid fa-sort-up"></i> : <i className="fa-solid fa-sort-down"></i>
@@ -241,7 +292,7 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
                     {visibleFields.map(field => (
                       <div 
                         key={field.name} 
-                        style={{ width: columnWidth }}
+                        style={{ width: columnWidths[field.name] }}
                         className="px-6 py-2 text-sm truncate self-center relative shrink-0"
                         onDoubleClick={(e) => {
                           e.stopPropagation();
