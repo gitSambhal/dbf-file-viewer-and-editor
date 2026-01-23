@@ -36,6 +36,7 @@ const App: React.FC = () => {
 
   const [frFind, setFrFind] = useState('');
   const [frReplace, setFrReplace] = useState('');
+  const [showNullColumnWarning, setShowNullColumnWarning] = useState(true);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -1109,15 +1110,15 @@ const App: React.FC = () => {
             <div className="h-full flex flex-col animate-in slide-in-from-bottom-4 duration-700">
                {/* Warning if columns with all null values are hidden */}
                {(() => {
-                 const allNullColumns = activeTab.header.fields.filter(field => 
+                 const allNullColumns = activeTab.header.fields.filter(field =>
                    activeTab.rows.every(row => row[field.name] === null || row[field.name] === undefined || row[field.name] === '')
                  );
-                 
-                 if (allNullColumns.length > 0) {
+
+                 if (allNullColumns.length > 0 && showNullColumnWarning) {
                    return (
                      <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
                        <i className="fa-solid fa-exclamation-triangle text-amber-600 dark:text-amber-500 text-lg"></i>
-                       <div>
+                       <div className="flex-1">
                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
                            {allNullColumns.length} column(s) hidden due to all null values
                          </p>
@@ -1125,6 +1126,9 @@ const App: React.FC = () => {
                            Click "Manage Columns" to view and toggle visibility of: {allNullColumns.map(f => f.name).join(', ')}
                          </p>
                        </div>
+                       <button onClick={() => setShowNullColumnWarning(false)} className="text-amber-600 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-300">
+                         <i className="fa-solid fa-xmark"></i>
+                       </button>
                      </div>
                    );
                  }
