@@ -857,6 +857,43 @@ const App: React.FC = () => {
                   <i className="fa-solid fa-cloud-arrow-up text-indigo-400 animate-bounce"></i>
                   <span>Or just drag and drop anywhere</span>
                 </div>
+                <div className="mt-10 w-full max-w-5xl text-left">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">Features</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-layer-group text-indigo-500"></i> Multi-file tabs</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Open multiple DBF files and switch across tabs, tabs remain visible in fullscreen.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-bolt text-amber-500"></i> Live updates</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Detect background file changes, highlight updated cells, hover to see old values.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-filter text-indigo-500"></i> Query builder & slicer</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Add conditions and slice data (first, last, range) for targeted views.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-repeat text-indigo-500"></i> Find & Replace</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Bulk replace text across fields with confirmation.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-columns text-indigo-500"></i> Column manager</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Show or hide columns and adjust widths for a custom layout.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-arrows-up-down text-indigo-500"></i> Virtualized table</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Smooth scrolling with large datasets, context menu actions, and inline editing.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-download text-indigo-500"></i> Export</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Export to DBF, CSV, or JSON directly from the browser.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-moon text-indigo-500"></i> Dark mode</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Toggle light/dark theme and remember preference.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
