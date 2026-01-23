@@ -54,6 +54,30 @@ const App: React.FC = () => {
   });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleOpenFilesClick = async () => {
+    try {
+      const anyWindow = window as any;
+      if (anyWindow.showOpenFilePicker) {
+        const handles = await anyWindow.showOpenFilePicker({
+          multiple: true,
+          types: [
+            {
+              description: 'dBase DBF',
+              accept: { 'application/octet-stream': ['.dbf'] }
+            }
+          ]
+        });
+        const files = await Promise.all(handles.map((h: any) => h.getFile()));
+        if (files.length > 0) {
+          await processFiles(files as File[]);
+        }
+      } else {
+        fileInputRef.current?.click();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     if (darkMode) {
@@ -68,12 +92,11 @@ const App: React.FC = () => {
   const activeTab = tabs[activeTabIndex] || null;
   const currentSelectedRowIndex = activeTab ? selectedRowIndices[activeTab.id] ?? null : null;
 
-  const processFiles = async (files: FileList | File[]) => {
+  const processFiles = async (files: File[]) => {
     setStatus(AppStatus.LOADING);
     try {
       const newTabs: DBFData[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (const file of files) {
         if (!file.name.toLowerCase().endsWith('.dbf')) continue;
         
         const buffer = await file.arrayBuffer();
@@ -99,7 +122,7 @@ const App: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    processFiles(files);
+    processFiles(Array.from(files));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -115,8 +138,8 @@ const App: React.FC = () => {
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files) {
-      processFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -514,7 +537,7 @@ const App: React.FC = () => {
 
               <input type="file" ref={fileInputRef} className="hidden" accept=".dbf" multiple onChange={handleFileUpload} />
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleOpenFilesClick}
                 className={`p-2 w-10 h-10 rounded-lg transition-all flex items-center justify-center ${tabs.length === 0 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                 title="Upload DBF Files"
               >
@@ -534,8 +557,8 @@ const App: React.FC = () => {
           </header>
         )}
 
-        {tabs.length > 0 && headerVisible && (
-          <div className="flex bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-8 pt-2 gap-1 z-20 shrink-0 transition-all">
+        {tabs.length > 0 && (
+          <div className={`flex bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 ${headerVisible ? 'px-8 pt-2' : 'px-4 pt-2'} gap-1 z-20 shrink-0 transition-all`}>
             {tabs.map((tab, idx) => (
               <div key={tab.id} onClick={() => setActiveTabIndex(idx)}
                 className={`group flex items-center gap-2 px-4 py-2 rounded-t-lg text-xs font-semibold cursor-pointer transition-all border-x border-t
@@ -709,7 +732,7 @@ const App: React.FC = () => {
               <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 uppercase tracking-tighter">DBF Nexus Online Studio</h2>
               <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-10 leading-relaxed font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis.</p>
               <div className="flex flex-col items-center gap-6">
-                <button onClick={() => fileInputRef.current?.click()} className="px-10 py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-2xl shadow-indigo-300 dark:shadow-indigo-900/30 hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-widest text-xs">
+                <button onClick={handleOpenFilesClick} className="px-10 py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-2xl shadow-indigo-300 dark:shadow-indigo-900/30 hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-widest text-xs">
                   SELECT DBF FILE
                 </button>
                 <div className="flex items-center gap-3 text-slate-400 text-sm font-bold">
