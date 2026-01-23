@@ -872,6 +872,36 @@ const App: React.FC = () => {
                 <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Layout Engine</h3>
                 <button onClick={() => setShowColumnManager(false)}><i className="fa-solid fa-xmark text-slate-400"></i></button>
               </div>
+<div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => {
+                    setTabs(prev => {
+                      const newTabs = [...prev];
+                      const tab = { ...newTabs[activeTabIndex] };
+                      tab.hiddenColumns = [];
+                      newTabs[activeTabIndex] = tab;
+                      return newTabs;
+                    });
+                  }}
+                  className="flex-1 px-3 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={() => {
+                    setTabs(prev => {
+                      const newTabs = [...prev];
+                      const tab = { ...newTabs[activeTabIndex] };
+                      tab.hiddenColumns = activeTab.header.fields.map(f => f.name);
+                      newTabs[activeTabIndex] = tab;
+                      return newTabs;
+                    });
+                  }}
+                  className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Clear All
+                </button>
+              </div>
               <div className="max-h-80 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
                 {activeTab.header.fields.map(field => (
                   <label key={field.name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors group">
