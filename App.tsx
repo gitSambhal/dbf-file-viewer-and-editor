@@ -903,12 +903,29 @@ const App: React.FC = () => {
                 </button>
               </div>
               <div className="max-h-80 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                {activeTab.header.fields.map(field => (
-                  <label key={field.name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors group">
-                    <input type="checkbox" checked={!activeTab.hiddenColumns.includes(field.name)} onChange={() => toggleColumnVisibility(field.name)} className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 transition-all" />
-                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{field.name}</span>
-                  </label>
-                ))}
+                {activeTab.header.fields.map(field => {
+                  // Check if column contains all null values
+                  const isAllNullColumn = activeTab.rows.every(row => row[field.name] === null || row[field.name] === undefined || row[field.name] === '');
+                  
+                  return (
+                    <label key={field.name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors group">
+                      <input 
+                        type="checkbox" 
+                        checked={!activeTab.hiddenColumns.includes(field.name)} 
+                        onChange={() => toggleColumnVisibility(field.name)} 
+                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 transition-all" 
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-slate-700 dark:text-slate-300 truncate font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{field.name}</span>
+                        {isAllNullColumn && (
+                          <span className="text-[10px] text-amber-500 dark:text-amber-400 ml-1">
+                            (All null values)
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -971,6 +988,30 @@ const App: React.FC = () => {
 
           {visibleData && (
             <div className="h-full flex flex-col animate-in slide-in-from-bottom-4 duration-700">
+               {/* Warning if columns with all null values are hidden */}
+               {(() => {
+                 const allNullColumns = activeTab.header.fields.filter(field => 
+                   activeTab.rows.every(row => row[field.name] === null || row[field.name] === undefined || row[field.name] === '')
+                 );
+                 
+                 if (allNullColumns.length > 0) {
+                   return (
+                     <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
+                       <i className="fa-solid fa-exclamation-triangle text-amber-600 dark:text-amber-500 text-lg"></i>
+                       <div>
+                         <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                           {allNullColumns.length} column(s) hidden due to all null values
+                         </p>
+                         <p className="text-xs text-amber-700 dark:text-amber-500 mt-1">
+                           Click "Manage Columns" to view and toggle visibility of: {allNullColumns.map(f => f.name).join(', ')}
+                         </p>
+                       </div>
+                     </div>
+                   );
+                 }
+                 return null;
+               })()}
+               
                <div className="flex-1 min-h-0 relative">
                   <VirtualTable 
                     data={visibleData} 

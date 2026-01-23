@@ -126,12 +126,21 @@ export class DBFParser {
       recordOffset += recordLength;
     }
 
+    // Identify columns with all null values
+    const allNullColumns: string[] = [];
+    for (const field of fields) {
+      const allValuesNull = rows.every(row => row[field.name] === null || row[field.name] === undefined || row[field.name] === '');
+      if (allValuesNull) {
+        allNullColumns.push(field.name);
+      }
+    }
+
     return { 
       id: Math.random().toString(36).substr(2, 9),
       header, 
       rows, 
       fileName, 
-      hiddenColumns: [] 
+      hiddenColumns: allNullColumns 
     };
   }
 
