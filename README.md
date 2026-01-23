@@ -105,3 +105,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Built with modern web technologies for maximum compatibility
 - Inspired by the need for powerful, browser-based database tools
 - Special thanks to the dBase and FoxPro communities
+
+## 👨‍💻 Developer
+
+**Suhail Akhtar** - [LinkedIn](https://www.linkedin.com/in/im-suhail-akhtar/)

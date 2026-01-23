@@ -29,6 +29,7 @@ const App: React.FC = () => {
   const [headerVisible, setHeaderVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   // Query Engine State
   const [queryConditions, setQueryConditions] = useState<QueryCondition[]>([]);
@@ -81,6 +82,10 @@ const App: React.FC = () => {
         e.preventDefault();
         setShowShortcuts(prev => !prev);
       }
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowInfo(prev => !prev);
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
         handleOpenFilesClick();
@@ -98,6 +103,7 @@ const App: React.FC = () => {
         if (showColumnManager) setShowColumnManager(false);
         if (showFindReplace) setShowFindReplace(false);
         if (showQueryBuilder) setShowQueryBuilder(false);
+        if (showInfo) setShowInfo(false);
         if (modalConfig.isOpen) setModalConfig(prev => ({...prev, isOpen: false}));
         if (tabContextMenu.isOpen) setTabContextMenu(prev => ({ ...prev, isOpen: false }));
         if (!headerVisible || !sidebarVisible) {
@@ -119,7 +125,7 @@ const App: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [activeTab, showShortcuts, showColumnManager, showFindReplace, showQueryBuilder, modalConfig.isOpen, headerVisible, sidebarVisible, tabs.length, tabContextMenu.isOpen]);
+  }, [activeTab, showShortcuts, showColumnManager, showFindReplace, showQueryBuilder, showInfo, modalConfig.isOpen, headerVisible, sidebarVisible, tabs.length, tabContextMenu.isOpen]);
   
   const handleOpenFilesClick = async () => {
     try {
@@ -649,6 +655,93 @@ const App: React.FC = () => {
     >
       <ShortcutsHelp isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
+      {/* Info Modal */}
+      {showInfo && (
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto animate-in zoom-in-95 duration-300">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">About DBF Nexus</h2>
+                <button
+                  onClick={() => setShowInfo(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  <i className="fa-solid fa-xmark text-lg"></i>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i className="fa-solid fa-database text-2xl text-indigo-600 dark:text-indigo-400"></i>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">DBF Nexus Professional</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Advanced browser-based DBF file viewer and editor</p>
+                </div>
+
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Keyboard Shortcuts</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 dark:text-slate-400">Open File</span>
+                      <div className="flex gap-0.5">
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">Ctrl</kbd>
+                        <span className="text-slate-400 dark:text-slate-500">+</span>
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">O</kbd>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 dark:text-slate-400">Find & Replace</span>
+                      <div className="flex gap-0.5">
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">Ctrl</kbd>
+                        <span className="text-slate-400 dark:text-slate-500">+</span>
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">F</kbd>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 dark:text-slate-400">Add Row</span>
+                      <div className="flex gap-0.5">
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">Ctrl</kbd>
+                        <span className="text-slate-400 dark:text-slate-500">+</span>
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">+</kbd>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 dark:text-slate-400">Show Shortcuts</span>
+                      <div className="flex gap-0.5">
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">Ctrl</kbd>
+                        <span className="text-slate-400 dark:text-slate-500">+</span>
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">/</kbd>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 dark:text-slate-400">Show Info</span>
+                      <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">?</kbd>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Developer</h4>
+                  <div className="text-center">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Built by</p>
+                    <a
+                      href="https://www.linkedin.com/in/im-suhail-akhtar/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors"
+                    >
+                      <i className="fa-brands fa-linkedin"></i>
+                      Suhail Akhtar
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Drag Overlay */}
       {isDragging && (
         <div className="fixed inset-0 z-[200] bg-indigo-600/20 backdrop-blur-md border-4 border-dashed border-indigo-500 flex items-center justify-center pointer-events-none animate-in fade-in duration-200">
@@ -670,27 +763,29 @@ const App: React.FC = () => {
         confirmLabel={modalConfig.variant === 'danger' ? 'Delete' : 'Confirm'}
       />
 
-      {/* Floating Zen Mode Controls */}
-      <div className="fixed bottom-6 right-6 z-[100] flex gap-2">
-        {!sidebarVisible && (
-          <button 
-            onClick={() => setSidebarVisible(true)}
-            className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-all active:scale-90"
-            title="Show Sidebar"
-          >
-            <i className="fa-solid fa-arrow-left"></i>
-          </button>
-        )}
-        {!headerVisible && (
-          <button 
-            onClick={() => setHeaderVisible(true)}
-            className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-all active:scale-90"
-            title="Show Header"
-          >
-            <i className="fa-solid fa-arrow-down"></i>
-          </button>
-        )}
-      </div>
+      {/* Floating Zen Mode Controls - Only show when files are loaded */}
+      {tabs.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-[100] flex gap-2">
+          {!sidebarVisible && (
+            <button
+              onClick={() => setSidebarVisible(true)}
+              className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-all active:scale-90"
+              title="Show Sidebar"
+            >
+              <i className="fa-solid fa-arrow-left"></i>
+            </button>
+          )}
+          {!headerVisible && (
+            <button
+              onClick={() => setHeaderVisible(true)}
+              className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-all active:scale-90"
+              title="Show Header"
+            >
+              <i className="fa-solid fa-arrow-down"></i>
+            </button>
+          )}
+        </div>
+      )}
 
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {headerVisible && (
@@ -759,6 +854,19 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                  <button
+                    onClick={() => setShowInfo(true)}
+                    className="p-2 w-10 h-10 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center"
+                    title="Info & Shortcuts (?)"
+                  >
+                    <i className="fa-solid fa-circle-info"></i>
+                  </button>
+                  <div className="ml-3 text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                    <kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-mono">Ctrl</kbd>
+                    <span className="text-slate-300 dark:text-slate-600">+</span>
+                    <kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-mono">/</kbd>
+                    <span className="ml-1">shortcuts</span>
+                  </div>
                 </>
               )}
               
@@ -1052,13 +1160,13 @@ const App: React.FC = () => {
           )}
 
           {status === AppStatus.IDLE && tabs.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-500">
+            <div className="h-full overflow-y-auto flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-500 py-8">
               <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-indigo-100/50 dark:shadow-indigo-900/10">
                 <i className="fa-solid fa-database text-4xl text-indigo-500"></i>
               </div>
               <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 uppercase tracking-tighter">DBF Nexus Online Studio</h2>
-              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-10 leading-relaxed font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis.</p>
-              <div className="flex flex-col items-center gap-6">
+              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-10 leading-relaxed font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis. 100% client-side processing - no data sent to servers.</p>
+              <div className="flex flex-col items-center gap-6 mt-8">
                 <button onClick={handleOpenFilesClick} className="px-10 py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-2xl shadow-indigo-300 dark:shadow-indigo-900/30 hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-widest text-xs">
                   SELECT DBF FILE
                 </button>
@@ -1066,7 +1174,19 @@ const App: React.FC = () => {
                   <i className="fa-solid fa-cloud-arrow-up text-indigo-400 animate-bounce"></i>
                   <span>Or just drag and drop anywhere</span>
                 </div>
-                <div className="mt-10 w-full max-w-5xl text-left">
+                <div className="flex items-center gap-4 text-slate-400 text-sm">
+                  <button
+                    onClick={() => setShowInfo(true)}
+                    className="flex items-center gap-2 hover:text-indigo-500 transition-colors"
+                    title="Show Info & Shortcuts (?)"
+                  >
+                    <i className="fa-solid fa-circle-info"></i>
+                    <span>Info & Shortcuts</span>
+                  </button>
+                  <span className="text-slate-300 dark:text-slate-600">|</span>
+                  <span>Press <kbd className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-xs">?</kbd> for help</span>
+                </div>
+                <div className="mt-10 w-full max-w-5xl text-left mb-8">
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">Features</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -1100,6 +1220,30 @@ const App: React.FC = () => {
                     <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
                       <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-moon text-indigo-500"></i> Dark mode</div>
                       <p className="text-sm text-slate-500 dark:text-slate-400">Toggle light/dark theme and remember preference.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-mouse-pointer text-indigo-500"></i> Context Menus</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Right-click rows and columns for quick actions and operations.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-keyboard text-indigo-500"></i> Keyboard Shortcuts</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Full keyboard navigation with shortcuts for common actions.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-plus text-indigo-500"></i> Row Operations</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Insert, duplicate, and delete rows with confirmation dialogs.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-compress text-indigo-500"></i> Zen Mode</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Distraction-free interface by hiding header and sidebar.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-palette text-indigo-500"></i> Type-Aware Display</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Color-coded rendering for numbers, dates, and boolean values.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-computer text-green-500"></i> Client-Side Processing</div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">100% browser-based - no servers, no uploads, complete privacy.</p>
                     </div>
                   </div>
                 </div>
@@ -1156,7 +1300,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {sidebarVisible && (
+      {sidebarVisible && activeTab && (
         <div className="relative flex">
            {/* Sidebar Toggle Handle */}
            <button 
