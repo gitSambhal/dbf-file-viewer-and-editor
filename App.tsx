@@ -5,11 +5,16 @@ import { DBFParser } from './services/dbfParser';
 import VirtualTable from './components/VirtualTable';
 import Sidebar from './components/Sidebar';
 import CustomModal from './components/CustomModal';
+import ShortcutsHelp from './components/ShortcutsHelp';
 
 const App: React.FC = () => {
   const [tabs, setTabs] = useState<DBFData[]>([]);
   const [activeTabIndex, setActiveTabIndex] = useState<number>(-1);
   const [selectedRowIndices, setSelectedRowIndices] = useState<Record<string, number | null>>({});
+
+  const activeTab = tabs[activeTabIndex] || null;
+  const currentSelectedRowIndex = activeTab ? selectedRowIndices[activeTab.id] ?? null : null;
+  
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +28,7 @@ const App: React.FC = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Query Engine State
   const [queryConditions, setQueryConditions] = useState<QueryCondition[]>([]);
@@ -54,6 +60,42 @@ const App: React.FC = () => {
   });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        handleOpenFilesClick();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        if (activeTab) setShowFindReplace(prev => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '+') {
+        e.preventDefault();
+        if (activeTab) handleAddRow();
+      }
+      if (e.key === 'Escape') {
+        if (showShortcuts) setShowShortcuts(false);
+        if (showColumnManager) setShowColumnManager(false);
+        if (showFindReplace) setShowFindReplace(false);
+        if (showQueryBuilder) setShowQueryBuilder(false);
+        if (modalConfig.isOpen) setModalConfig(prev => ({...prev, isOpen: false}));
+        if (!headerVisible || !sidebarVisible) {
+          setHeaderVisible(true);
+          if (tabs.length > 0) setSidebarVisible(true);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, showShortcuts, showColumnManager, showFindReplace, showQueryBuilder, modalConfig.isOpen, headerVisible, sidebarVisible, tabs.length]);
+  
   const handleOpenFilesClick = async () => {
     try {
       const anyWindow = window as any;
@@ -90,9 +132,6 @@ const App: React.FC = () => {
       localStorage.setItem('theme', 'light');
     }
   }, [darkMode]);
-
-  const activeTab = tabs[activeTabIndex] || null;
-  const currentSelectedRowIndex = activeTab ? selectedRowIndices[activeTab.id] ?? null : null;
 
   const processFiles = async (files: File[]) => {
     setStatus(AppStatus.LOADING);
@@ -534,6 +573,8 @@ const App: React.FC = () => {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
+      <ShortcutsHelp isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+
       {/* Drag Overlay */}
       {isDragging && (
         <div className="fixed inset-0 z-[200] bg-indigo-600/20 backdrop-blur-md border-4 border-dashed border-indigo-500 flex items-center justify-center pointer-events-none animate-in fade-in duration-200">
