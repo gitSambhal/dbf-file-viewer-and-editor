@@ -474,6 +474,7 @@ const App: React.FC = () => {
   const handleSelectRow = useCallback((rowIndex: number) => {
     if (!activeTab) return;
     setSelectedRowIndices(prev => ({ ...prev, [activeTab.id]: rowIndex }));
+    setSidebarVisible(true);
   }, [activeTab]);
 
   const handleAddRow = () => {
@@ -1136,18 +1137,19 @@ const App: React.FC = () => {
                })()}
                
                <div className="flex-1 min-h-0 relative">
-                  <VirtualTable 
-                    data={visibleData} 
-                    searchTerm={searchTerm} 
+                  <VirtualTable
+                    data={visibleData}
+                    searchTerm={searchTerm}
                     selectedRowIndex={currentSelectedRowIndex}
                     sortConfig={sortConfig}
                     onSort={handleSort}
-                    onEdit={handleEdit} 
+                    onEdit={handleEdit}
                     onDeleteRow={handleDeleteRow}
                     onSelectRow={handleSelectRow}
                     onInsertRow={handleInsertRow}
                     onDuplicateRow={handleDuplicateRow}
-                  />
+                    onHideColumn={toggleColumnVisibility}
+                    />
                </div>
             </div>
           )}
