@@ -78,11 +78,20 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).contentEditable === 'true' ||
+        activeElement.closest('[contenteditable="true"]')
+      );
+
       if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault();
         setShowShortcuts(prev => !prev);
       }
-      if (e.key === '?') {
+      if (e.key === '?' && !isInputFocused) {
         e.preventDefault();
         setShowInfo(prev => !prev);
       }
@@ -90,7 +99,7 @@ const App: React.FC = () => {
         e.preventDefault();
         handleOpenFilesClick();
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !isInputFocused) {
         e.preventDefault();
         if (activeTab) setShowFindReplace(prev => !prev);
       }
@@ -99,6 +108,13 @@ const App: React.FC = () => {
         if (activeTab) handleAddRow();
       }
       if (e.key === 'Escape') {
+        // If search input is focused and has content, clear it first
+        if (isInputFocused && searchTerm) {
+          e.preventDefault();
+          setSearchTerm('');
+          return;
+        }
+
         if (showShortcuts) setShowShortcuts(false);
         if (showColumnManager) setShowColumnManager(false);
         if (showFindReplace) setShowFindReplace(false);
@@ -610,9 +626,31 @@ const App: React.FC = () => {
     setTabContextMenu(prev => ({ ...prev, isOpen: false }));
   };
 
+  // Global search results - only active when multiple files are loaded
+  const globalSearchResults = useMemo(() => {
+    if (tabs.length <= 1 || !searchTerm.trim()) return new Set<number>();
+
+    const matchingTabIndices = new Set<number>();
+    const searchValue = searchTerm.toLowerCase().trim();
+
+    tabs.forEach((tab, index) => {
+      const hasMatch = tab.rows.some(row =>
+        Object.values(row).some(value =>
+          value?.toString().toLowerCase().includes(searchValue)
+        )
+      );
+      if (hasMatch) {
+        matchingTabIndices.add(index);
+      }
+    });
+
+    return matchingTabIndices;
+  }, [tabs, searchTerm]);
+
+
   const visibleData = useMemo(() => {
     if (!activeTab) return null;
-    
+
     // 1. Apply Query Filtering
     let processedRows = activeTab.rows;
     if (queryConditions.length > 0) {
@@ -620,7 +658,7 @@ const App: React.FC = () => {
         return queryConditions.every(cond => {
           const rowValue = (row[cond.field] ?? '').toString().toLowerCase();
           const targetValue = cond.value.toLowerCase();
-          
+
           switch (cond.operator) {
             case 'equals': return rowValue === targetValue;
             case 'contains': return rowValue.includes(targetValue);
@@ -715,6 +753,16 @@ const App: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
+                      <span className="text-slate-600 dark:text-slate-400">Global Search</span>
+                      <div className="flex gap-0.5">
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">Ctrl</kbd>
+                        <span className="text-slate-400 dark:text-slate-500">+</span>
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">Shift</kbd>
+                        <span className="text-slate-400 dark:text-slate-500">+</span>
+                        <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">F</kbd>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-600 dark:text-slate-400">Show Info</span>
                       <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono">?</kbd>
                     </div>
@@ -739,10 +787,10 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
+      </div>
+    )}
 
-      {/* Drag Overlay */}
+    {/* Drag Overlay */}
       {isDragging && (
         <div className="fixed inset-0 z-[200] bg-indigo-600/20 backdrop-blur-md border-4 border-dashed border-indigo-500 flex items-center justify-center pointer-events-none animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 p-12 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6 scale-110">
@@ -804,15 +852,32 @@ const App: React.FC = () => {
               {activeTab && (
                 <>
                   <div className="relative group">
-                    <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <i className={`fa-solid fa-${tabs.length > 1 ? 'search' : 'magnifying-glass'} absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm`}></i>
                     <input
                       type="text"
-                      placeholder="Quick Search..."
+                      placeholder={tabs.length > 1 ? "Search All Files..." : "Quick Search..."}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm w-48 focus:w-64 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-200"
-                      title="Quick Search"
+                      className={`pl-9 pr-8 py-2 ${tabs.length > 1 ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 dark:bg-slate-800 border-none'} rounded-lg text-sm w-48 focus:w-64 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-200`}
+                      title={tabs.length > 1 ? "Search across all loaded DBF files" : "Quick Search"}
                     />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        title="Clear search"
+                      >
+                        <i className="fa-solid fa-xmark text-xs"></i>
+                      </button>
+                    )}
+                    {searchTerm && tabs.length > 1 && globalSearchResults.size > 0 && (
+                      <div className="absolute -bottom-8 left-0 text-[10px] text-emerald-700 dark:text-emerald-300 font-medium bg-white dark:bg-slate-800 px-3 py-2 rounded-lg shadow-lg border border-emerald-200 dark:border-emerald-700 animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-2">
+                          <i className="fa-solid fa-search text-emerald-500 text-[8px]"></i>
+                          <span>Found in {globalSearchResults.size} file{globalSearchResults.size > 1 ? 's' : ''}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => setShowQueryBuilder(!showQueryBuilder)}
@@ -861,6 +926,12 @@ const App: React.FC = () => {
                   >
                     <i className="fa-solid fa-circle-info"></i>
                   </button>
+                  {searchTerm && tabs.length > 1 && (
+                    <div className="ml-3 text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                      <i className="fa-solid fa-search text-[8px]"></i>
+                      <span className="font-medium">Searching {globalSearchResults.size} file{globalSearchResults.size > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
                   <div className="ml-3 text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
                     <kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-mono">Ctrl</kbd>
                     <span className="text-slate-300 dark:text-slate-600">+</span>
@@ -901,17 +972,30 @@ const App: React.FC = () => {
         )}
 
         {tabs.length > 0 && (
-          <div className={`flex bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 ${headerVisible ? 'px-8 pt-2' : 'px-4 pt-2'} gap-1 z-20 shrink-0 transition-all`}>
-            {tabs.map((tab, idx) => (
-              <div key={tab.id} onClick={() => setActiveTabIndex(idx)} onContextMenu={(e) => handleTabContextMenu(e, idx)}
-                className={`group flex items-center gap-2 px-4 py-2 rounded-t-lg text-xs font-semibold cursor-pointer transition-all border-x border-t
-                  ${activeTabIndex === idx ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm translate-y-[1px]' : 'bg-transparent border-transparent text-slate-500 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-900'}`}>
-                <span className="max-w-[150px] truncate">{tab.fileName}</span>
-                <button onClick={(e) => { e.stopPropagation(); closeTab(idx); }} className="ml-2 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity">
-                  <i className="fa-solid fa-xmark"></i>
-                </button>
-              </div>
-            ))}
+          <div className="relative bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 z-20 shrink-0 transition-all overflow-hidden">
+            <div className={`flex ${headerVisible ? 'px-8 pt-2' : 'px-4 pt-2'} gap-1 overflow-x-auto overflow-y-hidden`}>
+              {tabs.map((tab, idx) => {
+              const hasGlobalSearchMatch = globalSearchResults.has(idx);
+              const isActive = activeTabIndex === idx;
+
+              return (
+                <div key={tab.id} onClick={() => setActiveTabIndex(idx)} onContextMenu={(e) => handleTabContextMenu(e, idx)}
+                  className={`group flex items-center gap-2 px-4 py-2 rounded-t-lg text-xs font-semibold cursor-pointer transition-all border-x border-t relative
+                    ${isActive ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm translate-y-[1px]' : 'bg-transparent border-transparent text-slate-500 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-900'}
+                    ${hasGlobalSearchMatch && !isActive ? 'ring-2 ring-emerald-400 ring-opacity-60 bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 animate-in fade-in duration-300' : ''}`}>
+                  <span className="max-w-[150px] truncate">{tab.fileName}</span>
+                  {hasGlobalSearchMatch && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-emerald-500 text-white text-[8px] rounded-full font-bold animate-in fade-in zoom-in-95 duration-300 flex items-center justify-center">
+                      <i className="fa-solid fa-search text-[6px]"></i>
+                    </span>
+                  )}
+                  <button onClick={(e) => { e.stopPropagation(); closeTab(idx); }} className="ml-2 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity">
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+              );
+            })}
+            </div>
           </div>
         )}
 
@@ -1160,7 +1244,7 @@ const App: React.FC = () => {
           )}
 
           {status === AppStatus.IDLE && tabs.length === 0 && (
-            <div className="h-full overflow-y-auto flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-500 py-8">
+            <div className="h-full overflow-y-auto flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-500 py-8">
               <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-indigo-100/50 dark:shadow-indigo-900/10">
                 <i className="fa-solid fa-database text-4xl text-indigo-500"></i>
               </div>

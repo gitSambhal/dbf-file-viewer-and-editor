@@ -14,7 +14,7 @@ The ultimate browser-based power tool for dBase tables. Securely view and edit D
 ## ✨ Features
 
 - **🚀 Virtualized Table**: Smooth scrolling with large datasets (millions of records)
-- **🔍 Advanced Search**: Full-text search across all fields with instant results
+- **🔍 Smart Search**: Full-text search across all fields with instant results. When multiple files are loaded, automatically searches globally with tab highlighting and keyboard navigation (Ctrl+Shift+N/P)
 - **📊 Query Builder**: Add complex filter conditions with logical operators
 - **🔄 Find & Replace**: Bulk replace text across fields with confirmation dialogs
 - **📑 Multi-Tab Support**: Open multiple DBF files simultaneously with tab management
