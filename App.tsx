@@ -1152,7 +1152,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className={`flex-1 overflow-hidden relative flex flex-col transition-all duration-300 ${headerVisible ? 'p-8' : 'p-2'}`}>
+        <div className={`flex-1 overflow-hidden relative flex flex-col transition-all duration-300 ${headerVisible && tabs.length > 0 ? 'p-8' : 'p-2'}`}>
           {showQueryBuilder && activeTab && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-[400px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 animate-in fade-in slide-in-from-top-4">
               <div className="flex items-center justify-between mb-4">
@@ -1303,7 +1303,7 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-database text-4xl text-indigo-500"></i>
               </div>
               <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 uppercase tracking-tighter">DBF Nexus Online Studio</h2>
-              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-6 leading-relaxed font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis. 100% client-side processing - no data sent to servers.</p>
+              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-6 font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis. 100% client-side processing - no data sent to servers.</p>
               <div className="flex flex-col items-center gap-6 mt-8">
                 <button onClick={handleOpenFilesClick} className="px-10 py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-2xl shadow-indigo-300 dark:shadow-indigo-900/30 hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-widest text-xs">
                   SELECT DBF FILE
