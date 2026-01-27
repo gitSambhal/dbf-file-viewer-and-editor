@@ -1275,12 +1275,12 @@ const App: React.FC = () => {
           )}
 
           {status === AppStatus.IDLE && tabs.length === 0 && (
-            <div className="h-full overflow-y-auto flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-500 py-8">
+            <div className="h-full overflow-y-auto flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-500 py-4 pt-12">
               <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-indigo-100/50 dark:shadow-indigo-900/10">
                 <i className="fa-solid fa-database text-4xl text-indigo-500"></i>
               </div>
               <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-3 uppercase tracking-tighter">DBF Nexus Online Studio</h2>
-              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-10 leading-relaxed font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis. 100% client-side processing - no data sent to servers.</p>
+              <p className="text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-6 leading-relaxed font-medium">The ultimate browser-based power tool for dBase tables. Securely view and edit DBF files with virtualized scroll, multi-format exports, and professional metadata analysis. 100% client-side processing - no data sent to servers.</p>
               <div className="flex flex-col items-center gap-6 mt-8">
                 <button onClick={handleOpenFilesClick} className="px-10 py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-2xl shadow-indigo-300 dark:shadow-indigo-900/30 hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-widest text-xs">
                   SELECT DBF FILE
@@ -1301,9 +1301,9 @@ const App: React.FC = () => {
                   <span className="text-slate-300 dark:text-slate-600">|</span>
                   <span>Press <kbd className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-xs">?</kbd> for help</span>
                 </div>
-                <div className="mt-10 w-full max-w-5xl text-left mb-8">
+                <div className="mt-4 w-full max-w-5xl text-left mb-2">
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">Features</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
                       <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold mb-2"><i className="fa-solid fa-layer-group text-indigo-500"></i> Multi-file tabs</div>
                       <p className="text-sm text-slate-500 dark:text-slate-400">Open multiple DBF files and switch across tabs, tabs remain visible in fullscreen.</p>
