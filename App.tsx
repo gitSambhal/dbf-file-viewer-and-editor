@@ -688,7 +688,17 @@ const App: React.FC = () => {
       });
     }
 
-    // 2. Apply Slicer
+    // 2. Apply Search Filtering (if search term exists)
+    if (searchTerm.trim()) {
+      const searchValue = searchTerm.toLowerCase().trim();
+      processedRows = processedRows.filter(row =>
+        Object.values(row).some(value =>
+          value?.toString().toLowerCase().includes(searchValue)
+        )
+      );
+    }
+
+    // 3. Apply Slicer
     let rows = processedRows;
     if (rangeFilter.mode === 'first') {
       rows = rows.slice(0, rangeFilter.count);
@@ -699,7 +709,7 @@ const App: React.FC = () => {
     }
 
     return { ...activeTab, rows };
-  }, [activeTab, rangeFilter, queryConditions]);
+  }, [activeTab, rangeFilter, queryConditions, searchTerm]);
 
   return (
     <div 
