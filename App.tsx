@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [frFind, setFrFind] = useState('');
   const [frReplace, setFrReplace] = useState('');
   const [showNullColumnWarning, setShowNullColumnWarning] = useState(true);
+  const [hideNonMatchingTabs, setHideNonMatchingTabs] = useState(false);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -647,6 +648,22 @@ const App: React.FC = () => {
     return matchingTabIndices;
   }, [tabs, searchTerm]);
 
+  // Auto-switch to first visible tab when filtering hides the current active tab
+  useEffect(() => {
+    if (hideNonMatchingTabs && searchTerm.trim() && tabs.length > 0) {
+      const isActiveTabVisible = globalSearchResults.has(activeTabIndex);
+      if (!isActiveTabVisible) {
+        // Find the first visible tab
+        for (let i = 0; i < tabs.length; i++) {
+          if (globalSearchResults.has(i)) {
+            setActiveTabIndex(i);
+            break;
+          }
+        }
+      }
+    }
+  }, [hideNonMatchingTabs, searchTerm, globalSearchResults, activeTabIndex, tabs.length]);
+
 
   const visibleData = useMemo(() => {
     if (!activeTab) return null;
@@ -837,7 +854,7 @@ const App: React.FC = () => {
 
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {headerVisible && (
-          <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between shadow-sm z-30 shrink-0 transition-all duration-300">
+          <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between shadow-sm z-30 shrink-0 transition-all duration-300">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-indigo-200 dark:shadow-indigo-900/20 shadow-lg">
                 <i className="fa-solid fa-database text-white text-lg"></i>
@@ -851,33 +868,41 @@ const App: React.FC = () => {
             <div className="flex items-center gap-3">
               {activeTab && (
                 <>
-                  <div className="relative group">
-                    <i className={`fa-solid fa-${tabs.length > 1 ? 'search' : 'magnifying-glass'} absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm`}></i>
-                    <input
-                      type="text"
-                      placeholder={tabs.length > 1 ? "Search All Files..." : "Quick Search..."}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className={`pl-9 pr-8 py-2 ${tabs.length > 1 ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 dark:bg-slate-800 border-none'} rounded-lg text-sm w-48 focus:w-64 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-slate-200`}
-                      title={tabs.length > 1 ? "Search across all loaded DBF files" : "Quick Search"}
-                    />
-                    {searchTerm && (
-                      <button
-                        onClick={() => setSearchTerm('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                        title="Clear search"
-                      >
-                        <i className="fa-solid fa-xmark text-xs"></i>
-                      </button>
-                    )}
-                    {searchTerm && tabs.length > 1 && globalSearchResults.size > 0 && (
-                      <div className="absolute -bottom-8 left-0 text-[10px] text-emerald-700 dark:text-emerald-300 font-medium bg-white dark:bg-slate-800 px-3 py-2 rounded-lg shadow-lg border border-emerald-200 dark:border-emerald-700 animate-in slide-in-from-top-2 duration-300">
-                        <div className="flex items-center gap-2">
-                          <i className="fa-solid fa-search text-emerald-500 text-[8px]"></i>
-                          <span>Found in {globalSearchResults.size} file{globalSearchResults.size > 1 ? 's' : ''}</span>
-                        </div>
-                      </div>
-                    )}
+                  <div className="flex flex-col items-start">
+                    <div className="relative group">
+                      <i className={`fa-solid fa-${tabs.length > 1 ? 'search' : 'magnifying-glass'} absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm`}></i>
+                      <input
+                        type="text"
+                        placeholder={tabs.length > 1 ? "Search All Files..." : "Quick Search..."}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={`pl-9 pr-8 py-2 ${tabs.length > 1 ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-100 dark:bg-slate-800 border-none'} rounded-lg text-sm w-48 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-slate-200`}
+                        title={tabs.length > 1 ? "Search across all loaded DBF files" : "Quick Search"}
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                          title="Clear search"
+                        >
+                          <i className="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                      )}
+                    </div>
+                    <div className={`mt-1 flex items-center gap-2 text-[10px] text-emerald-700 dark:text-emerald-300 transition-opacity duration-200 ${searchTerm && tabs.length > 1 && globalSearchResults.size > 0 ? 'opacity-100' : 'opacity-0'}`}>
+                      <i className="fa-solid fa-search text-emerald-500 text-[8px]"></i>
+                      <span>Found in {globalSearchResults.size || 0} file{(globalSearchResults.size || 0) > 1 ? 's' : ''}</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer ml-2">
+                        <input
+                          type="checkbox"
+                          checked={hideNonMatchingTabs}
+                          onChange={(e) => setHideNonMatchingTabs(e.target.checked)}
+                          className="w-3 h-3 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-600"
+                          disabled={!searchTerm || tabs.length <= 1 || globalSearchResults.size === 0}
+                        />
+                        <span className="text-[9px] text-slate-600 dark:text-slate-400">Show results only</span>
+                      </label>
+                    </div>
                   </div>
                   <button
                     onClick={() => setShowQueryBuilder(!showQueryBuilder)}
@@ -926,12 +951,6 @@ const App: React.FC = () => {
                   >
                     <i className="fa-solid fa-circle-info"></i>
                   </button>
-                  {searchTerm && tabs.length > 1 && (
-                    <div className="ml-3 text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
-                      <i className="fa-solid fa-search text-[8px]"></i>
-                      <span className="font-medium">Searching {globalSearchResults.size} file{globalSearchResults.size > 1 ? 's' : ''}</span>
-                    </div>
-                  )}
                   <div className="ml-3 text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
                     <kbd className="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-mono">Ctrl</kbd>
                     <span className="text-slate-300 dark:text-slate-600">+</span>
@@ -975,6 +994,8 @@ const App: React.FC = () => {
           <div className="relative bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 z-20 shrink-0 transition-all overflow-hidden">
             <div className={`flex ${headerVisible ? 'px-8 pt-2' : 'px-4 pt-2'} gap-1 overflow-x-auto overflow-y-hidden`}>
               {tabs.map((tab, idx) => {
+                const shouldShow = !hideNonMatchingTabs || !searchTerm.trim() || globalSearchResults.has(idx);
+                if (!shouldShow) return null;
               const hasGlobalSearchMatch = globalSearchResults.has(idx);
               const isActive = activeTabIndex === idx;
 
