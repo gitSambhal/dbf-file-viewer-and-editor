@@ -213,10 +213,15 @@ const App: React.FC = () => {
     try {
       const newTabs: DBFData[] = [];
       for (const { file, handle } of items) {
-        if (!file.name.toLowerCase().endsWith('.dbf')) continue;
-        const buffer = await file.arrayBuffer();
-        const parsed = await DBFParser.parse(buffer, file.name);
-        newTabs.push({ ...parsed, fileHandle: handle, lastModified: file.lastModified, changes: {} });
+        try {
+          if (!file.name.toLowerCase().endsWith('.dbf')) continue;
+          const buffer = await file.arrayBuffer();
+          const parsed = await DBFParser.parse(buffer, file.name);
+          newTabs.push({ ...parsed, fileHandle: handle, lastModified: file.lastModified, changes: {} });
+        } catch (fileErr) {
+          console.warn(`Failed to process file ${file.name}:`, fileErr);
+          // Continue with other files
+        }
       }
       if (newTabs.length > 0) {
         const newIndex = tabs.length;
@@ -224,12 +229,14 @@ const App: React.FC = () => {
         setActiveTabIndex(newIndex);
         setStatus(AppStatus.READY);
         setSidebarVisible(true);
+        console.log(`Successfully loaded ${newTabs.length} DBF file(s)`);
       } else {
         setStatus(tabs.length > 0 ? AppStatus.READY : AppStatus.IDLE);
+        setError('No valid DBF files could be processed.');
       }
     } catch (err) {
-      console.error(err);
-      setError('Failed to parse DBF file.');
+      console.error('Error in batch processing:', err);
+      setError('Failed to process DBF files.');
       setStatus(AppStatus.ERROR);
     }
   };
@@ -284,8 +291,9 @@ const App: React.FC = () => {
     // First try to get files from dt.files (most reliable)
     if (dt.files && dt.files.length > 0) {
       Array.from(dt.files).forEach(f => {
-        if (f.name.toLowerCase().endsWith('.dbf')) {
-          items.push({ file: f as File });
+        const file = f as File;
+        if (file.name.toLowerCase().endsWith('.dbf')) {
+          items.push({ file });
         }
       });
     }
