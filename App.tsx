@@ -280,9 +280,19 @@ const App: React.FC = () => {
     setIsDragging(false);
     const dt = e.dataTransfer;
     const items: Array<{ file: File; handle?: any }> = [];
-    try {
-      const anyItem = (dt.items && dt.items.length > 0) ? dt.items : null;
-      if (anyItem) {
+
+    // First try to get files from dt.files (most reliable)
+    if (dt.files && dt.files.length > 0) {
+      Array.from(dt.files).forEach(f => {
+        if (f.name.toLowerCase().endsWith('.dbf')) {
+          items.push({ file: f as File });
+        }
+      });
+    }
+
+    // Fallback to dt.items if dt.files didn't work
+    if (items.length === 0 && dt.items && dt.items.length > 0) {
+      try {
         for (let i = 0; i < dt.items.length; i++) {
           const it: any = dt.items[i];
           if (it.kind === 'file') {
@@ -290,23 +300,28 @@ const App: React.FC = () => {
               const handle = await it.getAsFileSystemHandle();
               if (handle && handle.kind === 'file') {
                 const file = await handle.getFile();
-                items.push({ file, handle });
+                if (file.name.toLowerCase().endsWith('.dbf')) {
+                  items.push({ file, handle });
+                }
                 continue;
               }
             }
             const fileObj = typeof it.getAsFile === 'function' ? (it.getAsFile() as File | null) : null;
-            if (fileObj) items.push({ file: fileObj as File });
+            if (fileObj && fileObj.name.toLowerCase().endsWith('.dbf')) {
+              items.push({ file: fileObj as File });
+            }
           }
         }
+      } catch (err) {
+        console.warn('Drag-and-drop handle acquisition failed.', err);
       }
-    } catch (err) {
-      console.warn('Drag-and-drop handle acquisition failed, falling back to files.', err);
     }
-    if (items.length === 0 && dt.files && dt.files.length > 0) {
-      Array.from(dt.files).forEach(f => items.push({ file: f as File }));
-    }
+
     if (items.length > 0) {
+      console.log(`Processing ${items.length} DBF files from drag and drop`);
       await processFileSources(items);
+    } else {
+      console.log('No DBF files found in drop');
     }
   };
   
