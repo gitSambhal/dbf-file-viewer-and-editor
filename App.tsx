@@ -1441,16 +1441,16 @@ const App: React.FC = () => {
       {sidebarVisible && activeTab && (
         <div className="relative flex">
            {/* Sidebar Toggle Handle */}
-           <button 
+           <button
              onClick={() => setSidebarVisible(false)}
              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 z-50 transition-all hover:scale-110 active:scale-90"
              title="Hide Sidebar"
            >
              <i className="fa-solid fa-chevron-right"></i>
            </button>
-           <Sidebar 
-             data={activeTab} 
-             selectedRowIndex={currentSelectedRowIndex} 
+           <Sidebar
+             data={visibleData}
+             selectedRowIndex={currentSelectedRowIndex}
            />
         </div>
       )}
